@@ -1,0 +1,38 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $msg = 'No trace of mail traffic to microsoft found in mailog!';
+my $rtn = 0;
+my $tos = "to=<[^>]*?@(hotmail|live|msn|outlook)\.(be|co.uk|com|com\.pt|de|es|fr|gr|ie|it|nl|pt)>";
+my $log = "/var/log/mail.log";
+
+my $S3140 = 0;
+my $S3150 = 0;
+my $SENT = 0;
+
+$S3140 = `grep 'S3140' $log | wc -l`;
+chomp($S3140);
+$S3150 = `grep 'S3150' $log | wc -l`;
+chomp($S3150);
+$SENT = `egrep '$tos' $log | wc -l`;
+chomp($SENT);
+if ($S3140 > 0) {
+	$msg = "Found S3140 $S3140 time(s) in mailog!";
+	$rtn = 2;
+} else {
+	if ($S3150 > 0) {
+		$msg = "Found S3150 $S3150 time(s) in mailog!";
+		$rtn = 1;
+	} else {
+		if ($SENT > 0) {
+			$msg = "Found $SENT mail going to microsoft in mailog!";
+			$rtn = 0;
+		}
+	}
+}
+
+$msg .= " |S3140=$S3140;;1;; S3150=$S3150;1;;; SENT=$SENT;;;;\n";
+print($msg);
+exit $rtn;

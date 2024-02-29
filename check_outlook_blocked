@@ -132,9 +132,6 @@ else
 	S3150_CNT="${S3150_CNT%\\n}"
 	SENT_CNT=`egrep '$TOS' $LOG | wc -l`
 	SENT_CNT="${SENT_CNT%\\n}"
-	SENT_CNT=5
-	S3140_CNT=1
-	S3150_CNT=3
 
 	analyse_values 'S3140' $S3140_CNT $S3140_WARN $S3140_CRIT
 	analyse_values 'S3150' $S3150_CNT $S3150_WARN $S3150_CRIT

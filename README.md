@@ -79,11 +79,11 @@ OK - No trace of mail traffic to microsoft found in mailog! |S3140=0;0;1;; S3150
 ```
 
 ```
-./check_wc -w 1 -C 5
+./check_outlook_blocked -w 1 -C 5
 OK - Found 50 mail(s) going to microsoft in mailog! |S3140=0;0;1;; S3150=0;1;5;; SENT=50;0;0;;
 ```
 
 ```
-./check_wc -s 10 -S 50
+./check_outlook_blocked -s 10 -S 50
 WARNING - Found 20 mail(s) going to microsoft in mailog! |S3140=0;0;1;; S3150=0;0;1;; SENT=20;10;50;;
 ```

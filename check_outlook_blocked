@@ -1,38 +1,144 @@
-#!/usr/bin/perl
+#!/bin/bash
 
-use strict;
-use warnings;
+##
+#
+# check if a mail logfile includes traffic to microsoft, and if said traffic is blocked
+#
+#
+# Usage:
+#	./check_outlook_blocked
+#
+# 2024-02-25:  Version 1.1	\\ Pit Wenkin
+#
+##
 
-my $msg = 'No trace of mail traffic to microsoft found in mailog!';
-my $rtn = 0;
-my $tos = "to=<[^>]*?@(hotmail|live|msn|outlook)\.(be|co.uk|com|com\.pt|de|es|fr|gr|ie|it|nl|pt)>";
-my $log = "/var/log/mail.log";
 
-my $S3140 = 0;
-my $S3150 = 0;
-my $SENT = 0;
+# nagios return values
+export STATE_OK=0
+export STATE_WARNING=1
+export STATE_CRITICAL=2
+export STATE_UNKNOWN=3
+export STATE_DEPENDENT=4
 
-$S3140 = `grep 'S3140' $log | wc -l`;
-chomp($S3140);
-$S3150 = `grep 'S3150' $log | wc -l`;
-chomp($S3150);
-$SENT = `egrep '$tos' $log | wc -l`;
-chomp($SENT);
-if ($S3140 > 0) {
-	$msg = "Found S3140 $S3140 time(s) in mailog!";
-	$rtn = 2;
-} else {
-	if ($S3150 > 0) {
-		$msg = "Found S3150 $S3150 time(s) in mailog!";
-		$rtn = 1;
-	} else {
-		if ($SENT > 0) {
-			$msg = "Found $SENT mail going to microsoft in mailog!";
-			$rtn = 0;
-		}
-	}
+intReturn=$STATE_OK
+
+
+MSG=""
+TOS="to=<[^>]*?@(hotmail|live|msn|outlook)\.(be|co.uk|com|com\.pt|de|es|fr|gr|ie|it|nl|pt)>"
+LOG="/var/log/mail.log"
+
+S3140_CNT=0
+S3140_WARN=0
+S3140_CRIT=1
+S3150_CNT=0
+S3150_WARN=0
+S3150_CRIT=1
+SENT_CNT=0
+SENT_WARN=0
+SENT_CRIT=0
+
+usage()
+{
+	echo "usage: ./check_outlook_blocked"
+	echo "options:"
+	echo "	-l [logfile]	/var/log/mail.log"
+	echo ""
+	echo "	-W [warning S3140]	Warning value for S3140 returns (default $S3140_WARN)"
+	echo "	-C [critical S3140]	Critical value for S3140 returns (default $S3140_CRIT)"
+	echo ""
+	echo "	-w [warning S3150]	Warning value for S3150 returns (default $S3150_WARN)"
+	echo "	-c [critical S3150]	Critical value for S3150 returns (default $S3150_CRIT)"
+	echo ""
+	echo "	-s [warning sent mail]	Warning value for snet mail (default $SENT_WARN)"
+	echo "	-S [critical sent mail]	Critical value for sent mail (default $SENT_CRIT)"
+	echo ""
+	echo "examples: ./check_outlook_blocked -W 1 -C 5"
+	exit 3
 }
 
-$msg .= " |S3140=$S3140;;1;; S3150=$S3150;1;;; SENT=$SENT;;;;\n";
-print($msg);
-exit $rtn;
+if [ "$1" == "--help" ]; then
+	usage; exit 0
+fi
+
+while getopts 2:W:C:w:c:u:p:h:b:iUv OPTNAME; do
+	case "$OPTNAME" in
+		l)	LOG="$OPTARG";;
+		W)	S3140_WARN="$OPTARG";;
+		C)	S3140_CRIT="$OPTARG";;
+		w)	S3150_WARN="$OPTARG";;
+		c)	S3150_CRIT="$OPTARG";;
+		*)	usage;;
+	esac
+done
+
+function analyse_values {
+	txt=$1
+	cnt=$2
+	warn=$3
+	crit=$4
+	if [ "$cnt" == 0 ] ; then
+		intReturn=$(( $intReturn > $STATE_OK ? $intReturn : $STATE_OK ))
+	elif [ "$cnt" -ge "$crit" ] ; then
+		MSG=$MSG"Found $txt $cnt time(s) in mailog!\n"
+		intReturn=$(( $intReturn > $STATE_CRITICAL ? $intReturn : $STATE_CRITICAL ))
+	elif [ "$cnt" -ge "$warn" ] ; then
+		MSG=$MSG"Found $txt $cnt time(s) in mailog!\n"
+		intReturn=$(( $intReturn > $STATE_WARNING ? $intReturn : $STATE_WARNING ))
+	fi
+}
+
+function analyse_sent {
+	txt=$1
+	cnt=$2
+	warn=$3
+	crit=$4
+	if [ "$cnt" == 0 ] ; then
+		MSG=$MSG"No trace of mail traffic to microsoft found in mailog!"
+		intReturn=$(( $intReturn > $STATE_OK ? $intReturn : $STATE_OK ))
+	else
+		MSG=$MSG"Found $cnt mail(s) going to $txt in mailog!"
+		if [ "$cnt" -ge "$crit" ] ; then
+			intReturn=$(( $intReturn > $STATE_CRITICAL ? $intReturn : $STATE_CRITICAL ))
+		elif [ "$cnt" -ge "$warn" ] ; then
+			intReturn=$(( $intReturn > $STATE_WARNING ? $intReturn : $STATE_WARNING ))
+		fi
+	fi
+}
+
+if [ "$S3140_WARN" -gt "$S3140_CRIT" ] ; then
+	echo "Critical value must be equal or higher than warning value"
+	echo "Warning value for S3140: $S3140_WARN"
+	echo "Critical value fior S3140: $S3140_CRIT"
+	echo ""
+	echo "For more information:  ./${0##*/} --help" 
+	exit 1 
+fi
+
+if [ "$S3150_WARN" -gt "$S3150_CRIT" ] ; then
+	echo "Critical value must be equal or higher than warning value"
+	echo "Warning value for S3150: $S3150_WARN"
+	echo "Critical value fior S3150: $S3150_CRIT"
+	echo ""
+	echo "For more information:  ./${0##*/} --help" 
+	exit 1 
+fi
+
+if [ "$LOG" = "" ] || [ ! -f $LOG ] ; then
+	usage
+else
+	S3140_CNT=`grep 'S3140' $LOG | wc -l`
+	S3140_CNT="${S3140_CNT%\\n}"
+	S3150_CNT=`grep 'S3150' $LOG | wc -l`
+	S3150_CNT="${S3150_CNT%\\n}"
+	SENT_CNT=`egrep '$TOS' $LOG | wc -l`
+	SENT_CNT="${SENT_CNT%\\n}"
+
+	analyse_values 'S3140' $S3140_CNT $S3140_WARN $S3140_CRIT
+	analyse_values 'S3150' $S3150_CNT $S3150_WARN $S3150_CRIT
+	analyse_sent 'microsoft' $SENT_CNT $SENT_WARN $SENT_CRIT
+
+	MSG=$MSG" |S3140=$S3140_CNT;$S3140_WARN;$S3140_CRIT;; S3150=$S3150_CNT;$S3150_WARN;$S3150_CRIT;; SENT=$SENT_CNT;$SENT_WARN;$SENT_CRIT;;\n"
+
+	echo -e $MSG
+	exit $intReturn
+fi

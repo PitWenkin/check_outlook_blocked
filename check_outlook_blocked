@@ -8,7 +8,7 @@
 # Usage:
 #	./check_outlook_blocked
 #
-# 2024-02-25:  Version 1.1	\\ Pit Wenkin
+# 2024-04-14:  Version 1.2	\\ Pit Wenkin
 #
 ##
 
@@ -26,7 +26,6 @@ intReturn=$STATE_OK
 MSG=""
 TOS="to=<[^>]*?@(hotmail|live|msn|outlook)\.(be|co.uk|com|com\.pt|de|es|fr|gr|ie|it|nl|pt)>"
 LOG="/var/log/mail.log"
-
 S3140_CNT=0
 S3140_WARN=0
 S3140_CRIT=1
@@ -41,7 +40,7 @@ usage()
 {
 	echo "usage: ./check_outlook_blocked"
 	echo "options:"
-	echo "	-l [logfile]	/var/log/mail.log"
+	echo "	-l [logfile]		Logfile to analyse (default /var/log/mail.log)"
 	echo ""
 	echo "	-W [warning S3140]	Warning value for S3140 returns (default $S3140_WARN)"
 	echo "	-C [critical S3140]	Critical value for S3140 returns (default $S3140_CRIT)"
@@ -49,8 +48,10 @@ usage()
 	echo "	-w [warning S3150]	Warning value for S3150 returns (default $S3150_WARN)"
 	echo "	-c [critical S3150]	Critical value for S3150 returns (default $S3150_CRIT)"
 	echo ""
-	echo "	-s [warning sent mail]	Warning value for snet mail (default $SENT_WARN)"
+	echo "	-s [warning sent mail]	Warning value for sent mail (default $SENT_WARN)"
 	echo "	-S [critical sent mail]	Critical value for sent mail (default $SENT_CRIT)"
+	echo ""
+	echo "	-r [regex]		Regex to search for (default $TOS)"
 	echo ""
 	echo "examples: ./check_outlook_blocked -W 1 -C 5"
 	exit 3
@@ -60,13 +61,16 @@ if [ "$1" == "--help" ]; then
 	usage; exit 0
 fi
 
-while getopts 2:W:C:w:c:u:p:h:b:iUv OPTNAME; do
+while getopts l:W:C:w:c:s:S:r: OPTNAME; do
 	case "$OPTNAME" in
 		l)	LOG="$OPTARG";;
 		W)	S3140_WARN="$OPTARG";;
 		C)	S3140_CRIT="$OPTARG";;
 		w)	S3150_WARN="$OPTARG";;
 		c)	S3150_CRIT="$OPTARG";;
+		s)	SENT_WARN="$OPTARG";;
+		S)	SENT_CRIT="$OPTARG";;
+		r)	TOS="$OPTARG";;
 		*)	usage;;
 	esac
 done
@@ -111,7 +115,7 @@ if [ "$S3140_WARN" -gt "$S3140_CRIT" ] ; then
 	echo "Critical value fior S3140: $S3140_CRIT"
 	echo ""
 	echo "For more information:  ./${0##*/} --help" 
-	exit 1 
+	exit 1
 fi
 
 if [ "$S3150_WARN" -gt "$S3150_CRIT" ] ; then
@@ -120,7 +124,7 @@ if [ "$S3150_WARN" -gt "$S3150_CRIT" ] ; then
 	echo "Critical value fior S3150: $S3150_CRIT"
 	echo ""
 	echo "For more information:  ./${0##*/} --help" 
-	exit 1 
+	exit 1
 fi
 
 if [ "$LOG" = "" ] || [ ! -f $LOG ] ; then
@@ -130,7 +134,7 @@ else
 	S3140_CNT="${S3140_CNT%\\n}"
 	S3150_CNT=`grep 'S3150' $LOG | wc -l`
 	S3150_CNT="${S3150_CNT%\\n}"
-	SENT_CNT=`egrep '$TOS' $LOG | wc -l`
+	SENT_CNT=`egrep $TOS $LOG | wc -l`
 	SENT_CNT="${SENT_CNT%\\n}"
 
 	analyse_values 'S3140' $S3140_CNT $S3140_WARN $S3140_CRIT

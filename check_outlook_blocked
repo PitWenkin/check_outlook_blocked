@@ -8,7 +8,7 @@
 # Usage:
 #	./check_outlook_blocked
 #
-# 2024-05-14:  Version 1.3	\\ Pit Wenkin
+# 2024-05-14:  Version 1.4	\\ Pit Wenkin
 #
 ##
 
@@ -101,9 +101,9 @@ function analyse_sent {
 		intReturn=$(( $intReturn > $STATE_OK ? $intReturn : $STATE_OK ))
 	else
 		MSG=$MSG"Found $cnt mail(s) going to $txt in mailog!"
-		if [ "$cnt" -ge "$crit" ] ; then
+		if [ "$crit" != "0" ] && [ "$cnt" -ge "$crit" ] ; then
 			intReturn=$(( $intReturn > $STATE_CRITICAL ? $intReturn : $STATE_CRITICAL ))
-		elif [ "$cnt" -ge "$warn" ] ; then
+		elif [ "$warn" != "0" ] && [ "$cnt" -ge "$warn" ] ; then
 			intReturn=$(( $intReturn > $STATE_WARNING ? $intReturn : $STATE_WARNING ))
 		fi
 	fi

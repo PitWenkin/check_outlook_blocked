@@ -10,6 +10,7 @@ Nagios/Icinga script to check if the mail log file hints as to if Microsoft bloc
 	 -c   number of times S3150 can appear in log before critical is returned (default=1)
 	 -s   number of times emails in direction of microsoft(*) can appear in log before warning is returned (default=0)
 	 -S   number of times emails in direction of microsoft(*) can appear in log before critical is returned (default=0)
+	 -r   regex used to determine what is regarded as microsoft (default='to=<[^>]*?@(hotmail|live|msn|outlook)\.(be|co.uk|com|com\.pt|de|es|fr|gr|ie|it|nl|pt)>')
 	 -h   Usage help
 ```
 
